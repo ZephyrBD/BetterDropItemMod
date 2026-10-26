@@ -1,7 +1,13 @@
 {
   "name": "BetterDropItem",
   "version_number": "3.0.0",
-  "website_url": "",
-  "description": "Drop items and equipment from your inventory to trade or throw away. Fork of KookehsDropItemMod_Fork (BepInEx/R2API port of Kookeh's DropItemMod).",
-  "dependencies": []
+  "website_url": "https://github.com/ZephyrBD/BetterDropItemMod",
+  "description": "Drop items and equipment from your inventory to trade with friends or throw them away. Fork of KookehsDropItemMod_Fork with server-side validation, anti-exploit guards and extra options.",
+  "dependencies": [
+    "bbepis-BepInExPack-5.4.2122",
+    "RiskofThunder-HookGenPatcher-1.2.9",
+    "RiskofThunder-R2API_Core-5.3.0",
+    "RiskofThunder-R2API_Networking-1.0.4",
+    "RiskofThunder-R2API_CommandHelper-1.0.2"
+  ]
 }

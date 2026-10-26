@@ -18,7 +18,7 @@
 - Build: `dotnet build BetterDropItem.sln` (SDK-style, `netstandard2.1`, needs a modern .NET SDK / VS 2022). There is no test project, CI, linter, or formatter config; verification is compile plus a manual in-game test with BepInEx + R2API.
 - There is no post-build deploy step. Copy `bin/<Configuration>/netstandard2.1/BetterDropItem.dll` into the game's `BepInEx/plugins` yourself.
 - Release version lives in the `ModVersion` const in `BetterDropItemPlugin.cs`, not in MSBuild metadata. `manifest.json` carries the same number in `version_number`. Bump both for user-visible changes, and add a line to the hand-maintained README changelog.
-- `manifest.json` exists but its `dependencies` array is empty: fill it with the Thunderstore package strings for BepInExPack_RoR2, the R2API modules in use, and (optionally) RiskOfOptions before uploading.
+- `manifest.json` carries the Thunderstore metadata. Its `version_number` must match `ModVersion`, and its `dependencies` pin the exact BepInEx/R2API package versions users will be forced to install by r2modman. `RiskofThunder-R2API_Core-5.3.0` is declared while `libs/R2API/R2API.Core.dll` is 5.2.0 — rebuild against 5.3.0 before uploading if that matters.
 
 ## Architecture
 
