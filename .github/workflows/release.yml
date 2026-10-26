@@ -1,0 +1,130 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build and publish, e.g. v3.0.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      # libs/ holds ~45 MB of Risk of Rain 2 / Unity / BepInEx assemblies and is
+      # gitignored, so the runner starts without it. Restore it from either
+      # a private URL (secret LIBS_ARCHIVE_URL) or the "libs" release asset.
+      - name: Restore vendored assemblies
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LIBS_ARCHIVE_URL: ${{ secrets.LIBS_ARCHIVE_URL }}
+        run: |
+          if (Test-Path 'libs/RoR2.dll') {
+            Write-Host 'libs/ is present in the checkout, nothing to restore.'
+            exit 0
+          }
+          if ($env:LIBS_ARCHIVE_URL) {
+            Write-Host 'Downloading assemblies from LIBS_ARCHIVE_URL.'
+            Invoke-WebRequest -Uri $env:LIBS_ARCHIVE_URL -OutFile libs.zip
+          } else {
+            Write-Host 'Downloading libs.zip from the "libs" release.'
+            gh release download libs --pattern 'libs.zip' --clobber
+          }
+          Expand-Archive -Path libs.zip -DestinationPath . -Force
+          Remove-Item libs.zip -Force
+          if (-not (Test-Path 'libs/RoR2.dll')) {
+            throw 'libs/ restore failed: libs/RoR2.dll is still missing.'
+          }
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Check version consistency
+        shell: pwsh
+        run: |
+          $version = $env:TAG -replace '^v', ''
+          $manifest = Get-Content manifest.json -Raw | ConvertFrom-Json
+          $plugin = Get-Content BetterDropItemPlugin.cs -Raw
+          $modVersion = [regex]::Match($plugin, 'ModVersion\s*=\s*"([^"]+)"').Groups[1].Value
+
+          Write-Host "tag=$version manifest=$($manifest.version_number) ModVersion=$modVersion"
+
+          if ([string]::IsNullOrWhiteSpace($modVersion)) { throw 'Could not read ModVersion from BetterDropItemPlugin.cs.' }
+          if ($manifest.version_number -ne $modVersion) {
+            throw "manifest.json says $($manifest.version_number) but ModVersion is $modVersion."
+          }
+          if ($version -ne $modVersion) {
+            throw "Tag is v$version but ModVersion is $modVersion. Bump ModVersion and manifest.json together."
+          }
+
+      - name: Build
+        run: dotnet build BetterDropItem.sln -c Release
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $out = 'bin/Release/netstandard2.1'
+          $files = @('BetterDropItem.dll', 'manifest.json', 'README.md', 'icon.png')
+          foreach ($f in $files) {
+            if (-not (Test-Path (Join-Path $out $f))) { throw "Build output is missing $f." }
+          }
+          $zip = "BetterDropItem-$($env:TAG -replace '^v', '').zip"
+          Compress-Archive -Path ($files | ForEach-Object { Join-Path $out $_ }) -DestinationPath $zip -Force
+          Write-Host "Packaged $zip"
+          Get-ChildItem $zip | Format-List Name, Length
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BetterDropItem-${{ env.TAG }}
+          path: BetterDropItem-*.zip
+          if-no-files-found: error
+
+      - name: Publish release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = $env:TAG
+          $version = $tag -replace '^v', ''
+          $zip = (Get-ChildItem 'BetterDropItem-*.zip' | Select-Object -First 1).FullName
+
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release $tag already exists, replacing the asset."
+            gh release upload $tag $zip --clobber
+            exit 0
+          }
+
+          # Prefer the hand-written README changelog line for this version.
+          $line = Select-String -Path README.md -Pattern "^- $([regex]::Escape($version)) - " |
+                  Select-Object -First 1
+
+          if ($line) {
+            $notes = $line.Line -replace '^- ', ''
+            gh release create $tag $zip --title "BetterDropItem $version" --notes $notes
+          } else {
+            Write-Host "No README changelog entry for $version, falling back to generated notes."
+            gh release create $tag $zip --title "BetterDropItem $version" --generate-notes
+          }

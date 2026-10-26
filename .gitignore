@@ -9,6 +9,10 @@ obj/
 # See "Building from source" in README.md for how to populate this folder.
 libs/
 
+# Local packaging and CI bundles
+libs.zip
+BetterDropItem-*.zip
+
 # OS junk
 Thumbs.db
 Desktop.ini

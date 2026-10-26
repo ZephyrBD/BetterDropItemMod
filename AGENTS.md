@@ -19,6 +19,7 @@
 - There is no post-build deploy step. Copy `bin/<Configuration>/netstandard2.1/BetterDropItem.dll` into the game's `BepInEx/plugins` yourself.
 - Release version lives in the `ModVersion` const in `BetterDropItemPlugin.cs`, not in MSBuild metadata. `manifest.json` carries the same number in `version_number`. Bump both for user-visible changes, and add a line to the hand-maintained README changelog.
 - `manifest.json` carries the Thunderstore metadata. Its `version_number` must match `ModVersion`, and its `dependencies` pin the exact BepInEx/R2API package versions users will be forced to install by r2modman. `RiskofThunder-R2API_Core-5.3.0` is declared while `libs/R2API/R2API.Core.dll` is 5.2.0 — rebuild against 5.3.0 before uploading if that matters.
+- CI: `.github/workflows/release.yml` builds on a `v*` tag (or manual dispatch) and publishes a GitHub Release. It re-downloads `libs/` first, because the runner has neither the folder nor the game install. The archive comes from the `libs` release asset `libs.zip`, or from the `LIBS_ARCHIVE_URL` secret if set. Regenerate `libs.zip` (contents must unzip to `libs/`) whenever the vendored references change.
 
 ## Architecture
 
