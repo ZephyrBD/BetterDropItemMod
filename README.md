@@ -1,4 +1,4 @@
-﻿# BetterDropItem
+# BetterDropItem
 
 Allows players to drop their own items out of their inventories to trade with friends / throw away items!
 
