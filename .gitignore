@@ -1,0 +1,15 @@
+# Build output
+bin/
+obj/
+*.user
+*.suo
+
+# Vendored game / engine / mod-loader assemblies.
+# These are copyrighted Risk of Rain 2 assets and are deliberately not redistributed.
+# See "Building from source" in README.md for how to populate this folder.
+libs/
+
+# OS junk
+Thumbs.db
+Desktop.ini
+.DS_Store

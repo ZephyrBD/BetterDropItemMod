@@ -1,0 +1,7 @@
+{
+  "name": "BetterDropItem",
+  "version_number": "3.0.0",
+  "website_url": "",
+  "description": "Drop items and equipment from your inventory to trade or throw away. Fork of KookehsDropItemMod_Fork (BepInEx/R2API port of Kookeh's DropItemMod).",
+  "dependencies": []
+}
